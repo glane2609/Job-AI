@@ -15,16 +15,19 @@ def get_driver():
     from selenium.webdriver.chrome.service import Service
 
     options = webdriver.ChromeOptions()
+
+    # REQUIRED for Docker / Render
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
+    options.add_argument("--remote-debugging-port=9222")
     options.add_argument("--window-size=1920,1080")
 
-    # Do NOT set binary_location – let Selenium auto-detect Chromium
-    service = Service()
+    service = Service()  # Render auto-provides chromedriver
 
     return webdriver.Chrome(service=service, options=options)
+
 
 
 # -------------------------------
