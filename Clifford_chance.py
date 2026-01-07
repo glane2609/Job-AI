@@ -48,6 +48,7 @@ def scrape_clifford(url):
 
     try:
         driver.get(url)
+        time.sleep(3)
         wait.until(EC.presence_of_element_located((By.CLASS_NAME, "attrax-vacancy-tile")))
 
         seen = set()
@@ -111,7 +112,8 @@ def scrape_clifford(url):
             if row["title"] == "" or row["location"] == "":
                 try:
                     driver.get(row["url"])
-                    wait.until(EC.presence_of_element_located((By.ID, "headertext")))
+                    time.sleep(2.5)
+                    #wait.until(EC.presence_of_element_located((By.ID, "headertext")))
 
                     try:
                         df.at[i, "title"] = driver.find_element(By.ID, "headertext").text.strip()
