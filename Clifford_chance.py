@@ -11,17 +11,18 @@ import pandas as pd
 # Create Chrome safely (Streamlit Cloud compatible)
 # -------------------------------
 def get_driver():
-    options = webdriver.ChromeOptions()
+    from selenium import webdriver
+    from selenium.webdriver.chrome.service import Service
 
+    options = webdriver.ChromeOptions()
     options.add_argument("--headless=new")
-    options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
 
-    # Streamlit Cloud chromium paths
-    options.binary_location = "/usr/bin/chromium"
-    service = Service("/usr/bin/chromedriver")
+    # Do NOT set binary_location – let Selenium auto-detect Chromium
+    service = Service()
 
     return webdriver.Chrome(service=service, options=options)
 
