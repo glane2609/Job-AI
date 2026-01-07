@@ -1,21 +1,9 @@
 import streamlit as st
 import pandas as pd
 import os
-import requests
 
-# -------------------------------
-# Safe API fetch
-# -------------------------------
-def safe_api_get(url):
-    try:
-        r = requests.get(url, timeout=120)
-        if r.status_code != 200:
-            st.error(f"API error {r.status_code} while calling {url}")
-            return None
-        return r.json()
-    except Exception as e:
-        st.error(f"API call failed: {e}")
-        return None
+from Clifford_chance import run_clifford
+from tower import run_tower
 
 # -------------------------------
 # Page Config
@@ -55,72 +43,76 @@ DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # -------------------------------
-# Dedup storage
+# Dedup storage (history only)
 # -------------------------------
 def diff_and_store(df_live, file):
     path = f"{DATA_DIR}/{file}"
+
+    # Detect ID column automatically
+    if "job_id" in df_live.columns:
+        key = "job_id"
+    elif "id" in df_live.columns:
+        key = "id"
+    else:
+        raise ValueError("No ID column found")
+
+    # Deduplicate current live
+    df_live = df_live.drop_duplicates(subset=[key])
 
     if os.path.exists(path):
         df_old = pd.read_csv(path)
     else:
         df_old = pd.DataFrame(columns=df_live.columns)
 
-    key = df_live.columns[0]
-
+    # New jobs = in live but not in old
     df_new = df_live[~df_live[key].astype(str).isin(df_old[key].astype(str))]
-    final = pd.concat([df_old, df_new], ignore_index=True)
-    final.to_csv(path, index=False)
 
-    return final, len(df_new)
+    # Update history
+    df_store = pd.concat([df_old, df_new], ignore_index=True)
+    df_store = df_store.drop_duplicates(subset=[key])
 
-# -------------------------------
-# API base URL
-# -------------------------------
-API = "https://job-ai-chf4.onrender.com"
+    df_store.to_csv(path, index=False)
+
+    return df_store, df_new
+
 
 source = st.selectbox("Select Hiring Source", ["Clifford Chance", "Tower Research"])
 
 if st.button("🚀 Run Live Scan"):
 
-    # ============================
+    # ===========================
     # Tower Research
-    # ============================
+    # ===========================
     if source == "Tower Research":
+        with st.spinner("🔍 Scanning Tower Research..."):
+            df_live = run_tower()
 
-        with st.spinner("🔍 Scanning Tower Research careers portal..."):
-            data = safe_api_get(f"{API}/tower")
+        # Deduplicate live
+        df_live = df_live.drop_duplicates(subset=["id"])
 
-        if data is None:
-            st.stop()
+        total_live = len(df_live)
 
-        df_live = pd.DataFrame(data)
-        total_found = len(df_live)
+        df_store, df_new = diff_and_store(df_live, "tower.csv")
+        new_count = len(df_new)
 
-        df, new_count = diff_and_store(df_live, "tower.csv")
-
-        st.markdown("### 📊 Tower Research Results")
-        st.markdown(f"**Total roles currently listed:** `{total_found}`")
+        st.markdown("### 📊 Tower Research")
+        st.markdown(f"**Total roles currently listed:** `{total_live}`")
 
         if new_count > 0:
             st.success(f"🆕 {new_count} new Tower jobs detected!")
         else:
             st.info("No new Tower jobs since last scan")
 
-        df["url"] = df["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
-        st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+        # Show LIVE jobs, not history
+        df_live["url"] = df_live["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
+        st.markdown(df_live.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-    # ============================
+    # ===========================
     # Clifford Chance
-    # ============================
+    # ===========================
     else:
-
         with st.spinner("🔍 Scanning Clifford Chance global careers site..."):
-            data = safe_api_get(f"{API}/clifford")
-
-        if data is None:
-            st.stop()
-
-        st.markdown("## ⚖️ Clifford Chance Hiring Status")
+            data = run_clifford()
 
         tabs = st.tabs(["Experienced Lawyers", "Business Professionals", "Early Careers"])
 
@@ -130,26 +122,28 @@ if st.button("🚀 Run Live Scan"):
             "Early Careers": ("Early_Careers", "clifford_early.csv")
         }
 
-        for i, (label, (api_key, file_name)) in enumerate(mapping.items()):
+        for i, (label, (key, file)) in enumerate(mapping.items()):
             with tabs[i]:
 
-                jobs = data.get(api_key, [])
+                # LIVE jobs from website
+                df_live = pd.DataFrame(data[key])
 
-                if not jobs:
-                    st.warning("No roles returned from API for this category")
-                    continue
+                # Deduplicate live
+                df_live = df_live.drop_duplicates(subset=["job_id"])
 
-                df_live = pd.DataFrame(jobs)
-                total_found = len(df_live)
+                total_live = len(df_live)
 
-                df, new_count = diff_and_store(df_live, file_name)
+                # Compare with history
+                df_store, df_new = diff_and_store(df_live, file)
+                new_count = len(df_new)
 
-                st.markdown(f"**Total roles currently listed:** `{total_found}`")
+                st.markdown(f"**Total roles currently listed:** `{total_live}`")
 
                 if new_count > 0:
                     st.success(f"🆕 {new_count} new roles detected!")
                 else:
                     st.info("No new roles since last scan")
 
-                df["url"] = df["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
-                st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+                # Show LIVE jobs
+                df_live["url"] = df_live["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
+                st.markdown(df_live.to_html(escape=False, index=False), unsafe_allow_html=True)
