@@ -70,31 +70,59 @@ source = st.selectbox("Select Hiring Source", ["Clifford Chance", "Tower Researc
 if st.button("🚀 Run Live Scan"):
 
     if source == "Tower Research":
-        data = requests.get(f"{API}/tower").json()
+
+        with st.spinner("🔍 Scanning Tower Research careers portal... Please wait"):
+            r = requests.get(f"{API}/tower")
+            data = r.json()
+
         df_live = pd.DataFrame(data)
+
+        total_found = len(df_live)
 
         df, new_count = diff_and_store(df_live, "tower.csv")
 
-        st.success(f"{new_count} new Tower jobs found")
+        st.markdown(f"### 📊 Tower Research Results")
+        st.markdown(f"**Total roles currently listed:** `{total_found}`")
+
+        if new_count > 0:
+            st.success(f"🆕 {new_count} new Tower jobs detected!")
+        else:
+            st.info("No new Tower jobs since last scan")
+
         df["url"] = df["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
         st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-    else:
-        data = requests.get(f"{API}/clifford").json()
 
-        tabs = st.tabs(["Experienced", "Business", "Early"])
+    else:
+
+        with st.spinner("🔍 Scanning Clifford Chance global careers site... Please wait"):
+            r = requests.get(f"{API}/clifford")
+            data = r.json()
+
+        st.markdown("## ⚖️ Clifford Chance Hiring Status")
+
+        tabs = st.tabs(["Experienced Lawyers", "Business Professionals", "Early Careers"])
 
         mapping = {
-            "Experienced": ("Experienced_Lawyers", "clifford_experienced.csv"),
-            "Business": ("Business_Professionals", "clifford_business.csv"),
-            "Early": ("Early_Careers", "clifford_early.csv")
+            "Experienced Lawyers": ("Experienced_Lawyers", "clifford_experienced.csv"),
+            "Business Professionals": ("Business_Professionals", "clifford_business.csv"),
+            "Early Careers": ("Early_Careers", "clifford_early.csv")
         }
 
         for tab, key in zip(tabs, mapping):
             with tab:
                 df_live = pd.DataFrame(data[mapping[key][0]])
+
+                total_found = len(df_live)
+
                 df, new_count = diff_and_store(df_live, mapping[key][1])
 
-                st.success(f"{new_count} new jobs")
+                st.markdown(f"**Total roles currently listed:** `{total_found}`")
+
+                if new_count > 0:
+                    st.success(f"🆕 {new_count} new roles detected!")
+                else:
+                    st.info("No new roles since last scan")
+
                 df["url"] = df["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
                 st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
