@@ -2,23 +2,29 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
 import time
 import pandas as pd
 
-# -------------------------------
-# Browser Setup
-# -------------------------------
-options = webdriver.ChromeOptions()
-options.add_argument("--headless=new")      # Chrome 109+ headless
-options.add_argument("--disable-gpu")
-options.add_argument("--window-size=1920,1080")
 
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-dev-shm-usage")
-options.add_argument("--start-maximized")
+# -------------------------------
+# Create Chrome safely (Streamlit Cloud compatible)
+# -------------------------------
+def get_driver():
+    options = webdriver.ChromeOptions()
 
-driver = webdriver.Chrome(options=options)
-wait = WebDriverWait(driver, 20)
+    options.add_argument("--headless=new")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1920,1080")
+
+    # Streamlit Cloud chromium paths
+    options.binary_location = "/usr/bin/chromium"
+    service = Service("/usr/bin/chromedriver")
+
+    return webdriver.Chrome(service=service, options=options)
+
 
 # -------------------------------
 # Smart breadcrumb location parser
@@ -39,13 +45,9 @@ def extract_location_from_breadcrumb(driver):
             raw = li.text.strip()
             if not raw:
                 continue
-
             txt = raw.lower()
-
-            # Skip contract-type words
             if any(word in txt for word in blacklist):
                 continue
-
             return raw
         except:
             continue
@@ -53,12 +55,10 @@ def extract_location_from_breadcrumb(driver):
     return ""
 
 
-
 # -------------------------------
-# Core scraper for a single portal
+# Scrape one portal
 # -------------------------------
-def scrape_portal(portal_name, url):
-    print(f"\n🔍 Scraping: {portal_name}")
+def scrape_portal(driver, wait, portal_name, url):
 
     driver.get(url)
     wait.until(EC.presence_of_element_located((By.CLASS_NAME, "attrax-vacancy-tile")))
@@ -66,9 +66,6 @@ def scrape_portal(portal_name, url):
     seen = set()
     jobs = []
 
-    # ------------------------------
-    # Step 1 — Swipe through tiles
-    # ------------------------------
     while True:
         tiles = driver.find_elements(By.CLASS_NAME, "attrax-vacancy-tile")
 
@@ -79,8 +76,7 @@ def scrape_portal(portal_name, url):
                     continue
                 seen.add(job_id)
 
-                job = {}
-                job["job_id"] = job_id
+                job = {"job_id": job_id}
 
                 try:
                     title_el = tile.find_element(By.CLASS_NAME, "attrax-vacancy-tile__title")
@@ -98,14 +94,6 @@ def scrape_portal(portal_name, url):
                 except:
                     job["location"] = ""
 
-                try:
-                    job["department"] = tile.find_element(
-                        By.CSS_SELECTOR,
-                        ".attrax-vacancy-tile__option-department .attrax-vacancy-tile__item-value"
-                    ).text.strip()
-                except:
-                    job["department"] = ""
-
                 jobs.append(job)
 
             except:
@@ -120,9 +108,7 @@ def scrape_portal(portal_name, url):
         except:
             break
 
-    # ------------------------------
-    # Step 2 — Enrich missing fields
-    # ------------------------------
+    # Enrich missing fields
     for job in jobs:
         if job["title"] == "" or job["location"] == "":
             driver.get(job["url"])
@@ -138,36 +124,28 @@ def scrape_portal(portal_name, url):
             except:
                 pass
 
-    df = pd.DataFrame(jobs, columns=["job_id", "title", "location", "url"])
-    print(f"✔ {portal_name}: {len(df)} jobs")
-
-    return df
+    return pd.DataFrame(jobs, columns=["job_id", "title", "location", "url"])
 
 
 # -------------------------------
-# Run for all portals
+# PUBLIC FUNCTION (called by Streamlit)
 # -------------------------------
-PORTALS = {
-    "Experienced_Lawyers": "https://jobs.cliffordchance.com/experienced-lawyers",
-    "Business_Professionals": "https://jobs.cliffordchance.com/business-professionals",
-    "Early_Careers": "https://jobs.cliffordchance.com/early-careers"
-}
-
-results = {}
-
-for name, link in PORTALS.items():
-    results[name] = scrape_portal(name, link)
-
-# -------------------------------
-# Separate DataFrames
-# -------------------------------
-df_experienced = results["Experienced_Lawyers"]
-df_business    = results["Business_Professionals"]
-df_early       = results["Early_Careers"]
-
 def run_clifford():
-    return {
-        "Experienced_Lawyers": df_experienced,
-        "Business_Professionals": df_business,
-        "Early_Careers": df_early
+
+    PORTALS = {
+        "Experienced_Lawyers": "https://jobs.cliffordchance.com/experienced-lawyers",
+        "Business_Professionals": "https://jobs.cliffordchance.com/business-professionals",
+        "Early_Careers": "https://jobs.cliffordchance.com/early-careers"
     }
+
+    driver = get_driver()
+    wait = WebDriverWait(driver, 20)
+
+    results = {}
+
+    for name, link in PORTALS.items():
+        results[name] = scrape_portal(driver, wait, name, link)
+
+    driver.quit()
+
+    return results
