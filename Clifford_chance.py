@@ -1,10 +1,25 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 import time
 import pandas as pd
+import os
+
+SEEN_FILE = "data/clifford_seen.csv"
+
+
+# -------------------------------
+# Persistent seen storage
+# -------------------------------
+def load_seen():
+    if os.path.exists(SEEN_FILE):
+        return set(pd.read_csv(SEEN_FILE)["job_id"].astype(str))
+    return set()
+
+def save_seen(ids):
+    os.makedirs("data", exist_ok=True)
+    pd.DataFrame({"job_id": list(ids)}).to_csv(SEEN_FILE, index=False)
+
 
 # -------------------------------
 # Create Chrome per scrape
@@ -19,8 +34,7 @@ def create_driver():
 
     service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=options)
-    wait = WebDriverWait(driver, 30)
-    return driver, wait
+    return driver
 
 
 # -------------------------------
@@ -44,88 +58,91 @@ def extract_location(driver):
 # Scrape one Clifford portal
 # -------------------------------
 def scrape_clifford(url):
-    driver, wait = create_driver()
+    driver = create_driver()
+    seen_ids = load_seen()
 
     try:
         driver.get(url)
         time.sleep(3)
-        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "attrax-vacancy-tile")))
 
-        seen = set()
+        tiles = driver.find_elements(By.CLASS_NAME, "attrax-vacancy-tile")
 
-        # ---------- Swiper Pagination Fix ----------
+        # Swiper pagination
         while True:
-            tiles = driver.find_elements(By.CLASS_NAME, "attrax-vacancy-tile")
-
-            for t in tiles:
-                jid = t.get_attribute("data-jobid")
-                if jid:
-                    seen.add(jid)
-
-            prev = len(seen)
-
             try:
                 btn = driver.find_element(By.CLASS_NAME, "swiper-button-next")
                 driver.execute_script("arguments[0].click();", btn)
                 time.sleep(1.2)
+                tiles_new = driver.find_elements(By.CLASS_NAME, "attrax-vacancy-tile")
+                if len(tiles_new) == len(tiles):
+                    break
+                tiles = tiles_new
             except:
                 break
 
-            tiles_after = driver.find_elements(By.CLASS_NAME, "attrax-vacancy-tile")
-            new_ids = {t.get_attribute("data-jobid") for t in tiles_after if t.get_attribute("data-jobid")}
-
-            if len(new_ids) == prev:
-                break
-
-        # ---------- Extract jobs ----------
         jobs = []
 
-        for tile in driver.find_elements(By.CLASS_NAME, "attrax-vacancy-tile"):
+        for tile in tiles:
             try:
-                job = {}
-                job["job_id"] = tile.get_attribute("data-jobid")
+                job_id = tile.get_attribute("data-jobid")
+                if not job_id:
+                    continue
+
+                title = ""
+                url_job = ""
+                location = ""
 
                 try:
-                    title_el = tile.find_element(By.CLASS_NAME, "attrax-vacancy-tile__title")
-                    job["title"] = title_el.text.strip()
-                    job["url"] = title_el.get_attribute("href")
+                    t = tile.find_element(By.CLASS_NAME, "attrax-vacancy-tile__title")
+                    title = t.text.strip()
+                    url_job = t.get_attribute("href")
                 except:
-                    job["title"] = ""
-                    job["url"] = ""
+                    pass
 
                 try:
-                    job["location"] = tile.find_element(
+                    location = tile.find_element(
                         By.CSS_SELECTOR,
                         ".attrax-vacancy-tile__option-location .attrax-vacancy-tile__item-value"
                     ).text.strip()
                 except:
-                    job["location"] = ""
+                    pass
 
-                jobs.append(job)
+                jobs.append({
+                    "job_id": str(job_id),
+                    "title": title,
+                    "location": location,
+                    "url": url_job
+                })
             except:
                 pass
 
         df = pd.DataFrame(jobs)
 
-        # ---------- Enrich missing fields ----------
-        for i, row in df.iterrows():
-            if row["title"] == "" or row["location"] == "":
-                try:
-                    driver.get(row["url"])
-                    time.sleep(2.5)
-                    #wait.until(EC.presence_of_element_located((By.ID, "headertext")))
+        # Identify NEW jobs only
+        df_new = df[~df["job_id"].isin(seen_ids)]
 
+        # Enrich only NEW jobs
+        for i, row in df_new.iterrows():
+            try:
+                driver.get(row["url"])
+                time.sleep(2.5)
+
+                if not row["title"]:
                     try:
-                        df.at[i, "title"] = driver.find_element(By.ID, "headertext").text.strip()
+                        df.loc[df["job_id"] == row["job_id"], "title"] = driver.find_element(By.TAG_NAME, "h1").text.strip()
                     except:
                         pass
 
-                    try:
-                        df.at[i, "location"] = extract_location(driver)
-                    except:
-                        pass
-                except:
-                    pass
+                if not row["location"]:
+                    loc = extract_location(driver)
+                    if loc:
+                        df.loc[df["job_id"] == row["job_id"], "location"] = loc
+            except:
+                pass
+
+        # Save updated seen list
+        all_seen = seen_ids.union(set(df["job_id"]))
+        save_seen(all_seen)
 
         return df.drop_duplicates(subset=["job_id"])
 
