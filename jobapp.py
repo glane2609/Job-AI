@@ -63,7 +63,7 @@ def diff_and_store(df_live, file):
 # -------------------------------
 # API base URL
 # -------------------------------
-API = "http://localhost:8000"
+API = "https://job-ai-chf4.onrender.com"
 
 source = st.selectbox("Select Hiring Source", ["Clifford Chance", "Tower Research"])
 
