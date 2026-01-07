@@ -4,6 +4,20 @@ import os
 import requests
 
 # -------------------------------
+# Safe API fetch
+# -------------------------------
+def safe_api_get(url):
+    try:
+        r = requests.get(url, timeout=120)
+        if r.status_code != 200:
+            st.error(f"API error {r.status_code} while calling {url}")
+            return None
+        return r.json()
+    except Exception as e:
+        st.error(f"API call failed: {e}")
+        return None
+
+# -------------------------------
 # Page Config
 # -------------------------------
 st.set_page_config(
@@ -35,7 +49,6 @@ h1, h2, h3 {
 
 st.markdown("<h1 style='text-align:center;'>📊 Live Hiring Intelligence</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align:center;'>Clifford Chance & Tower Research</h4>", unsafe_allow_html=True)
-
 st.divider()
 
 DATA_DIR = "data"
@@ -69,19 +82,23 @@ source = st.selectbox("Select Hiring Source", ["Clifford Chance", "Tower Researc
 
 if st.button("🚀 Run Live Scan"):
 
+    # ============================
+    # Tower Research
+    # ============================
     if source == "Tower Research":
 
-        with st.spinner("🔍 Scanning Tower Research careers portal... Please wait"):
-            r = requests.get(f"{API}/tower")
-            data = r.json()
+        with st.spinner("🔍 Scanning Tower Research careers portal..."):
+            data = safe_api_get(f"{API}/tower")
+
+        if data is None:
+            st.stop()
 
         df_live = pd.DataFrame(data)
-
         total_found = len(df_live)
 
         df, new_count = diff_and_store(df_live, "tower.csv")
 
-        st.markdown(f"### 📊 Tower Research Results")
+        st.markdown("### 📊 Tower Research Results")
         st.markdown(f"**Total roles currently listed:** `{total_found}`")
 
         if new_count > 0:
@@ -92,43 +109,47 @@ if st.button("🚀 Run Live Scan"):
         df["url"] = df["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
         st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-
+    # ============================
+    # Clifford Chance
+    # ============================
     else:
 
-        with st.spinner("🔍 Scanning Clifford Chance global careers site... Please wait"):
-            r = requests.get(f"{API}/clifford")
-            data = r.json()
-    
+        with st.spinner("🔍 Scanning Clifford Chance global careers site..."):
+            data = safe_api_get(f"{API}/clifford")
+
+        if data is None:
+            st.stop()
+
         st.markdown("## ⚖️ Clifford Chance Hiring Status")
-    
+
         tabs = st.tabs(["Experienced Lawyers", "Business Professionals", "Early Careers"])
-    
+
         mapping = {
             "Experienced Lawyers": ("Experienced_Lawyers", "clifford_experienced.csv"),
             "Business Professionals": ("Business_Professionals", "clifford_business.csv"),
             "Early Careers": ("Early_Careers", "clifford_early.csv")
         }
-    
-        for tab_name, (api_key, file_name) in mapping.items():
-            with tabs[list(mapping.keys()).index(tab_name)]:
-    
+
+        for i, (label, (api_key, file_name)) in enumerate(mapping.items()):
+            with tabs[i]:
+
                 jobs = data.get(api_key, [])
-    
-                if len(jobs) == 0:
+
+                if not jobs:
                     st.warning("No roles returned from API for this category")
                     continue
-    
+
                 df_live = pd.DataFrame(jobs)
                 total_found = len(df_live)
-    
+
                 df, new_count = diff_and_store(df_live, file_name)
-    
+
                 st.markdown(f"**Total roles currently listed:** `{total_found}`")
-    
+
                 if new_count > 0:
                     st.success(f"🆕 {new_count} new roles detected!")
                 else:
                     st.info("No new roles since last scan")
-    
+
                 df["url"] = df["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
                 st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
