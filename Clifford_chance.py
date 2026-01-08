@@ -20,6 +20,13 @@ def save_seen(ids):
     os.makedirs("data", exist_ok=True)
     pd.DataFrame({"job_id": list(ids)}).to_csv(SEEN_FILE, index=False)
 
+def is_complete(df):
+    # At least 95% of jobs must have titles
+    if len(df) == 0:
+        return False
+    filled = df["title"].astype(str).str.strip().ne("").sum()
+    return (filled / len(df)) > 0.95
+
 
 # -------------------------------
 # Create Chrome per scrape
@@ -154,6 +161,7 @@ def scrape_clifford(url):
 # Run all Clifford portals
 # -------------------------------
 def run_clifford():
+
     portals = {
         "Experienced_Lawyers": "https://jobs.cliffordchance.com/experienced-lawyers",
         "Business_Professionals": "https://jobs.cliffordchance.com/business-professionals",
@@ -163,7 +171,19 @@ def run_clifford():
     results = {}
 
     for name, url in portals.items():
-        print(f"Scraping {name}...")
-        results[name] = scrape_clifford(url).to_dict("records")
+        print(f"Scraping {name}…")
+
+        for attempt in range(5):  # retry up to 5 times
+            df = scrape_clifford(url)
+
+            if is_complete(df):
+                print(f"{name}: OK on attempt {attempt+1}")
+                break
+            else:
+                print(f"{name}: incomplete, retrying...")
+                time.sleep(2)
+
+        results[name] = df.to_dict("records")
 
     return results
+
