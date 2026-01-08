@@ -14,6 +14,35 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+INDIA_CITIES = [
+    "Mumbai",
+    "Bangalore",
+    "Bengaluru",
+    "Delhi",
+    "New Delhi",
+    "Gurgaon",
+    "Gurugram",
+    "Noida",
+    "Hyderabad",
+    "Chennai",
+    "Pune",
+    "Kolkata"
+]
+
+def apply_region_filter(df):
+    if "location" not in df.columns:
+        return df
+
+    region = st.selectbox("🌍 Select Region", ["All", "India", "Rest of World"])
+
+    if region == "India":
+        df = df[df["location"].str.contains("|".join(INDIA_CITIES), case=False, na=False)]
+    elif region == "Rest of World":
+        df = df[~df["location"].str.contains("|".join(INDIA_CITIES), case=False, na=False)]
+
+    return df
+
+
 # -------------------------------
 # Gradient UI
 # -------------------------------
@@ -58,7 +87,7 @@ def diff_and_store(df_live, file):
 
     # Deduplicate current live
     df_live = df_live.drop_duplicates(subset=[key])
-
+  
     if os.path.exists(path):
         df_old = pd.read_csv(path)
     else:
@@ -89,7 +118,7 @@ if st.button("🚀 Run Live Scan"):
 
         # Deduplicate live
         df_live = df_live.drop_duplicates(subset=["id"])
-
+        df_live = apply_region_filter(df_live)
         total_live = len(df_live)
 
         df_store, df_new = diff_and_store(df_live, "tower.csv")
@@ -130,7 +159,7 @@ if st.button("🚀 Run Live Scan"):
 
                 # Deduplicate live
                 df_live = df_live.drop_duplicates(subset=["job_id"])
-
+                df_live = apply_region_filter(df_live)
                 total_live = len(df_live)
 
                 # Compare with history
