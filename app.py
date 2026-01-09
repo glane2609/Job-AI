@@ -51,7 +51,8 @@ if "tower_live" not in st.session_state:
     st.session_state.tower_live = None
 if "clifford_live" not in st.session_state:
     st.session_state.clifford_live = None
-
+if "excel_path" not in st.session_state:
+    st.session_state.excel_path = None
 # -------------------------------
 # ASIA LOCATIONS
 # -------------------------------
@@ -191,9 +192,18 @@ else:
 st.divider()
 
 if st.button("📤 Export Asia Jobs to Excel"):
-    path = export_excel(asia_clifford_export, tower_asia_export)
-    st.download_button("Download Excel", open(path, "rb"), file_name="asia_hiring_report.xlsx")
+    st.session_state.excel_path = export_excel(asia_clifford_export, tower_asia_export)
+    st.success("Excel file created")
+    st.download_button(
+        "Download Excel",
+        open(st.session_state.excel_path, "rb"),
+        file_name="asia_hiring_report.xlsx"
+    )
+
 
 if st.button("📧 Send Email"):
-    send_email(path)
-    st.success("Email sent successfully!")
+    if st.session_state.excel_path is None:
+        st.error("Please export the Excel file first.")
+    else:
+        send_email(st.session_state.excel_path)
+        st.success("Email sent successfully!")
