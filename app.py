@@ -40,6 +40,11 @@ def build_excel_in_memory(clifford_tabs, tower_df):
     return buffer
 
 def send_email_excel(buffer):
+    password = os.getenv("GMAIL_APP_PASSWORD")
+
+    if not password:
+        raise Exception("GMAIL_APP_PASSWORD not set in environment variables")
+
     msg = EmailMessage()
     msg["Subject"] = "Asia Hiring Radar – Daily Report"
     msg["From"] = "glane.gonsalves9@gmail.com"
@@ -54,8 +59,9 @@ def send_email_excel(buffer):
     )
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login("glane.gonsalves9@gmail.com", "YOUR_GMAIL_APP_PASSWORD")
+        smtp.login("glane.gonsalves9@gmail.com", password)
         smtp.send_message(msg)
+
 
 
 # -------------------------------
