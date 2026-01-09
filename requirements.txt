@@ -7,3 +7,6 @@ selenium
 webdriver-manager
 lxml
 beautifulsoup4
+xlsxwriter
+openpyxl
+python-dotenv
