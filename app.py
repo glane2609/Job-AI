@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import os
-from datetime import datetime
-
 from Clifford_chance import run_clifford
 from tower import run_tower
 
@@ -20,64 +18,50 @@ st.set_page_config(
 # -------------------------------
 if "tower_live" not in st.session_state:
     st.session_state.tower_live = None
-
 if "clifford_live" not in st.session_state:
     st.session_state.clifford_live = None
 
 # -------------------------------
-# ASIA FILTER (Countries + Cities)
+# ASIA LOCATIONS
 # -------------------------------
 ASIA_LOCATIONS = [
-    # Countries
     "India","Singapore","China","Japan","Korea","South Korea","Taiwan",
     "Thailand","Malaysia","Indonesia","Vietnam","Philippines",
     "UAE","Qatar","Saudi","Dubai","Abu Dhabi","Doha",
-
-    # Cities
     "Mumbai","Bangalore","Bengaluru","Delhi","Gurgaon","Gurugram","Noida",
-    "Hyderabad","Chennai","Pune","Kolkata",
-    "Singapore","Hong Kong","Tokyo","Osaka","Seoul","Shanghai","Beijing",
-    "Taipei","Bangkok","Kuala Lumpur","Jakarta","Manila","Ho Chi Minh","GIFT City","Gift City"
+    "Hyderabad","Chennai","Pune","Kolkata","GIFT City","Gift City",
+    "Hong Kong","Tokyo","Osaka","Seoul","Shanghai","Beijing",
+    "Taipei","Bangkok","Kuala Lumpur","Jakarta","Manila","Ho Chi Minh"
 ]
 
-def apply_region_filter(df):
-    if "location" not in df.columns:
-        return df
-
-    asia_regex = "|".join(ASIA_LOCATIONS)
-
-    if region_filter == "Asia":
-        return df[df["location"].str.contains(asia_regex, case=False, na=False)]
-    elif region_filter == "Rest of World":
-        return df[~df["location"].str.contains(asia_regex, case=False, na=False)]
-    return df
-
+CLIFFORD_SNAPSHOT = "data/clifford_asia_snapshot.csv"
+TOWER_SNAPSHOT = "data/tower_asia_snapshot.csv"
 
 # -------------------------------
-# n-1 vs n comparison helpers
+# Snapshot helpers
 # -------------------------------
-def get_new_jobs(df_live, seen_file, id_col):
-    if not os.path.exists(seen_file):
-        return df_live.copy()
-    df_seen = pd.read_csv(seen_file)
-    return df_live[~df_live[id_col].astype(str).isin(df_seen[id_col].astype(str))]
+def is_asia(location):
+    if not isinstance(location, str):
+        return False
+    return any(k.lower() in location.lower() for k in ASIA_LOCATIONS)
 
-def get_dropped_jobs(df_live, seen_file, id_col):
-    if not os.path.exists(seen_file):
-        return pd.DataFrame()
-    df_seen = pd.read_csv(seen_file)
-    return df_seen[~df_seen[id_col].astype(str).isin(df_live[id_col].astype(str))]
+def load_snapshot(path):
+    if os.path.exists(path):
+        return pd.read_csv(path)
+    return pd.DataFrame()
 
-def update_seen(df_live, seen_file, id_col):
+def save_snapshot(df, path):
     os.makedirs("data", exist_ok=True)
-    if os.path.exists(seen_file):
-        df_seen = pd.read_csv(seen_file)
-        combined = pd.concat([df_seen, df_live[[id_col]]], ignore_index=True)
-    else:
-        combined = df_live[[id_col]]
-    combined = combined.drop_duplicates()
-    combined.to_csv(seen_file, index=False)
+    df.to_csv(path, index=False)
 
+def compare(today, snapshot_path, id_col):
+    yesterday = load_snapshot(snapshot_path)
+    if len(yesterday) == 0:
+        return today, pd.DataFrame(), pd.DataFrame()
+
+    new = today[~today[id_col].isin(yesterday[id_col])]
+    removed = yesterday[~yesterday[id_col].isin(today[id_col])]
+    return today, new, removed
 
 # -------------------------------
 # Styling
@@ -115,12 +99,6 @@ if st.button("🚀 Run Live Scan"):
         with st.spinner("🔍 Scanning Clifford Chance..."):
             st.session_state.clifford_live = run_clifford()
 
-# -------------------------------
-# Region filter
-# -------------------------------
-region_filter = st.selectbox("🌏 Filter by region", ["All", "Asia", "Rest of World"])
-
-
 # ===============================
 # TOWER
 # ===============================
@@ -130,21 +108,18 @@ if source == "Tower Research":
         st.info("Click Run Live Scan to fetch Tower Research jobs")
         st.stop()
 
-    df_live = st.session_state.tower_live.drop_duplicates(subset=["id"])
+    df = st.session_state.tower_live.drop_duplicates(subset=["id"])
+    df_asia = df[df["location"].apply(is_asia)]
 
-    df_new = get_new_jobs(df_live, "data/tower_seen.csv", "id")
-    df_dropped = get_dropped_jobs(df_live, "data/tower_seen.csv", "id")
-    update_seen(df_live, "data/tower_seen.csv", "id")
+    today, new, removed = compare(df_asia, TOWER_SNAPSHOT, "id")
+    save_snapshot(today, TOWER_SNAPSHOT)
 
-    df_live = apply_region_filter(df_live)
+    st.markdown(f"**Asia jobs visible today:** `{len(today)}`")
+    st.success(f"🆕 New since last scan: `{len(new)}`")
+    st.warning(f"🗑 Removed since last scan: `{len(removed)}`")
 
-    st.markdown(f"**Total roles currently listed:** `{len(df_live)}`")
-    st.success(f"🆕 New today: {len(df_new)}")
-    st.warning(f"🗑 Dropped since last scan: {len(df_dropped)}")
-
-    df_live["url"] = df_live["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
-    st.markdown(df_live.to_html(escape=False, index=False), unsafe_allow_html=True)
-
+    today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
+    st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
 
 # ===============================
 # CLIFFORD
@@ -156,7 +131,6 @@ else:
         st.stop()
 
     data = st.session_state.clifford_live
-
     tabs = st.tabs(["Experienced Lawyers", "Business Professionals", "Early Careers"])
 
     mapping = {
@@ -167,18 +141,15 @@ else:
 
     for i, (label, key) in enumerate(mapping.items()):
         with tabs[i]:
+            df = pd.DataFrame(data[key]).drop_duplicates(subset=["job_id"])
+            df_asia = df[df["location"].apply(is_asia)]
 
-            df_live = pd.DataFrame(data[key]).drop_duplicates(subset=["job_id"])
+            today, new, removed = compare(df_asia, CLIFFORD_SNAPSHOT, "job_id")
+            save_snapshot(today, CLIFFORD_SNAPSHOT)
 
-            df_new = get_new_jobs(df_live, "data/clifford_seen.csv", "job_id")
-            df_dropped = get_dropped_jobs(df_live, "data/clifford_seen.csv", "job_id")
-            update_seen(df_live, "data/clifford_seen.csv", "job_id")
+            st.markdown(f"**Asia jobs visible today:** `{len(today)}`")
+            st.success(f"🆕 New since last scan: `{len(new)}`")
+            st.warning(f"🗑 Removed since last scan: `{len(removed)}`")
 
-            df_live = apply_region_filter(df_live)
-
-            st.markdown(f"**Total roles currently listed:** `{len(df_live)}`")
-            st.success(f"🆕 New today: {len(df_new)}")
-            st.warning(f"🗑 Dropped since last scan: {len(df_dropped)}")
-
-            df_live["url"] = df_live["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
-            st.markdown(df_live.to_html(escape=False, index=False), unsafe_allow_html=True)
+            today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
+            st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
