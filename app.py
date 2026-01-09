@@ -32,10 +32,7 @@ INDIA_CITIES = [
     "Chennai", "Pune", "Kolkata", "GIFT City", "Gift City"
 ]
 
-# -------------------------------
-# Region filter
-# -------------------------------
-region_filter = st.selectbox("🌍 Filter jobs by region", ["All", "India", "Rest of World"])
+
 
 def apply_region_filter(df):
     if "location" not in df.columns:
@@ -103,6 +100,11 @@ if st.button("🚀 Run Live Scan"):
     else:
         with st.spinner("🔍 Scanning Clifford Chance..."):
             st.session_state.clifford_live = run_clifford()
+
+# -------------------------------
+# Region filter
+# -------------------------------
+region_filter = st.selectbox("🌍 Filter jobs by region", ["All", "India", "Rest of World"])
 
 # ===============================
 # TOWER
