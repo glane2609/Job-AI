@@ -6,17 +6,7 @@ from Clifford_chance import run_clifford
 from tower import run_tower
 
 # -------------------------------
-# Session cache
-# -------------------------------
-if "tower_live" not in st.session_state:
-    st.session_state.tower_live = None
-
-if "clifford_live" not in st.session_state:
-    st.session_state.clifford_live = None
-
-
-# -------------------------------
-# Page Config
+# Page config
 # -------------------------------
 st.set_page_config(
     page_title="Job Intelligence Platform",
@@ -25,35 +15,58 @@ st.set_page_config(
 )
 
 # -------------------------------
-# India city map
+# Session cache
+# -------------------------------
+if "tower_live" not in st.session_state:
+    st.session_state.tower_live = None
+
+if "clifford_live" not in st.session_state:
+    st.session_state.clifford_live = None
+
+# -------------------------------
+# India cities
 # -------------------------------
 INDIA_CITIES = [
     "Mumbai", "Bangalore", "Bengaluru", "Delhi", "New Delhi",
     "Gurgaon", "Gurugram", "Noida", "Hyderabad",
-    "Chennai", "Pune", "Kolkata"]
+    "Chennai", "Pune", "Kolkata", "GIFT City", "Gift City"
+]
 
 # -------------------------------
-# Filters
+# Region filter
 # -------------------------------
-def apply_region_filter(df, key):
+region_filter = st.selectbox("🌍 Filter jobs by region", ["All", "India", "Rest of World"])
+
+def apply_region_filter(df):
     if "location" not in df.columns:
         return df
 
-    region = st.selectbox(
-        "🌍 Select Region",
-        ["All", "India", "Rest of World"],
-        key=key
-    )
-
     india_regex = "|".join(INDIA_CITIES)
 
-    if region == "India":
+    if region_filter == "India":
         return df[df["location"].str.contains(india_regex, case=False, na=False)]
-    elif region == "Rest of World":
+    elif region_filter == "Rest of World":
         return df[~df["location"].str.contains(india_regex, case=False, na=False)]
-    else:
-        return df
+    return df
 
+# -------------------------------
+# New job tracking
+# -------------------------------
+def get_new_jobs(df_live, seen_file, id_col):
+    if not os.path.exists(seen_file):
+        return df_live.copy()
+    df_seen = pd.read_csv(seen_file)
+    return df_live[~df_live[id_col].astype(str).isin(df_seen[id_col].astype(str))]
+
+def update_seen(df_live, seen_file, id_col):
+    os.makedirs("data", exist_ok=True)
+    if os.path.exists(seen_file):
+        df_seen = pd.read_csv(seen_file)
+        combined = pd.concat([df_seen, df_live[[id_col]]], ignore_index=True)
+    else:
+        combined = df_live[[id_col]]
+    combined = combined.drop_duplicates()
+    combined.to_csv(seen_file, index=False)
 
 # -------------------------------
 # Styling
@@ -64,9 +77,7 @@ st.markdown("""
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
     color: white;
 }
-h1, h2, h3 {
-    color: white;
-}
+h1, h2, h3 { color: white; }
 .stButton>button {
     background-color: #00c6ff;
     color: black;
@@ -89,15 +100,13 @@ if st.button("🚀 Run Live Scan"):
     if source == "Tower Research":
         with st.spinner("🔍 Scanning Tower Research..."):
             st.session_state.tower_live = run_tower()
-
     else:
         with st.spinner("🔍 Scanning Clifford Chance..."):
             st.session_state.clifford_live = run_clifford()
 
-
-# ===========================
-# TOWER DISPLAY
-# ===========================
+# ===============================
+# TOWER
+# ===============================
 if source == "Tower Research":
 
     if st.session_state.tower_live is None:
@@ -105,19 +114,25 @@ if source == "Tower Research":
         st.stop()
 
     df_live = st.session_state.tower_live.drop_duplicates(subset=["id"])
+    df_new = get_new_jobs(df_live, "data/tower_seen.csv", "id")
+    new_count = len(df_new)
+    update_seen(df_live, "data/tower_seen.csv", "id")
 
-    df_live = apply_region_filter(df_live, "tower_region")
+    df_live = apply_region_filter(df_live)
 
-    st.markdown("### 📊 Tower Research")
     st.markdown(f"**Total roles currently listed:** `{len(df_live)}`")
+
+    if new_count > 0:
+        st.success(f"🆕 {new_count} new Tower jobs found since last scan")
+    else:
+        st.info("No new Tower jobs since last scan")
 
     df_live["url"] = df_live["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
     st.markdown(df_live.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-
-# ===========================
-# CLIFFORD DISPLAY
-# ===========================
+# ===============================
+# CLIFFORD
+# ===============================
 else:
 
     if st.session_state.clifford_live is None:
@@ -139,9 +154,18 @@ else:
 
             df_live = pd.DataFrame(data[key]).drop_duplicates(subset=["job_id"])
 
-            df_live = apply_region_filter(df_live, f"clifford_{key}")
+            df_new = get_new_jobs(df_live, "data/clifford_seen.csv", "job_id")
+            new_count = len(df_new)
+            update_seen(df_live, "data/clifford_seen.csv", "job_id")
+
+            df_live = apply_region_filter(df_live)
 
             st.markdown(f"**Total roles currently listed:** `{len(df_live)}`")
+
+            if new_count > 0:
+                st.success(f"🆕 {new_count} new jobs found since last scan")
+            else:
+                st.info("No new jobs found since last scan")
 
             df_live["url"] = df_live["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
             st.markdown(df_live.to_html(escape=False, index=False), unsafe_allow_html=True)
