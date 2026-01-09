@@ -3,6 +3,8 @@ import pandas as pd
 import os
 from Clifford_chance import run_clifford
 from tower import run_tower
+import smtplib
+from email.message import EmailMessage
 
 # -------------------------------
 # Page config
@@ -12,6 +14,35 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+def export_excel(clifford_tabs, tower_df):
+    os.makedirs("data", exist_ok=True)
+    path = "data/asia_hiring_report.xlsx"
+
+    with pd.ExcelWriter(path, engine="xlsxwriter") as writer:
+        clifford_tabs["Experienced_Lawyers"].to_excel(writer, sheet_name="Clifford_Lawyers", index=False)
+        clifford_tabs["Business_Professionals"].to_excel(writer, sheet_name="Clifford_Business", index=False)
+        clifford_tabs["Early_Careers"].to_excel(writer, sheet_name="Clifford_Early", index=False)
+        tower_df.to_excel(writer, sheet_name="Tower", index=False)
+
+    return path
+def send_email(file_path):
+    msg = EmailMessage()
+    msg["Subject"] = "Asia Hiring Radar – Daily Report"
+    msg["From"] = "glane.gonsalves9@gmail.com"
+    msg["To"] = "ronitsalvi@aquissearch.com"
+    msg.set_content("Attached: Asia hiring jobs for Clifford Chance and Tower Research.")
+
+    with open(file_path, "rb") as f:
+        msg.add_attachment(
+            f.read(),
+            maintype="application",
+            subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename="asia_hiring_report.xlsx"
+        )
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login("YOUR_EMAIL@gmail.com", "YOUR_GMAIL_APP_PASSWORD")
+        smtp.send_message(msg)
 
 # -------------------------------
 # Session cache
@@ -110,7 +141,7 @@ if source == "Tower Research":
 
     df = st.session_state.tower_live.drop_duplicates(subset=["id"])
     df_asia = df[df["location"].apply(is_asia)]
-
+    tower_asia_export = df_asia.copy()
     today, new, removed = compare(df_asia, TOWER_SNAPSHOT, "id")
     save_snapshot(today, TOWER_SNAPSHOT)
 
@@ -138,12 +169,12 @@ else:
         "Business Professionals": "Business_Professionals",
         "Early Careers": "Early_Careers"
     }
-
+    asia_clifford_export = {}
     for i, (label, key) in enumerate(mapping.items()):
         with tabs[i]:
             df = pd.DataFrame(data[key]).drop_duplicates(subset=["job_id"])
             df_asia = df[df["location"].apply(is_asia)]
-
+            asia_clifford_export[key] = df_asia.copy()
             today, new, removed = compare(df_asia, CLIFFORD_SNAPSHOT, "job_id")
             save_snapshot(today, CLIFFORD_SNAPSHOT)
 
@@ -153,3 +184,16 @@ else:
 
             today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
             st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
+
+
+
+
+st.divider()
+
+if st.button("📤 Export Asia Jobs to Excel"):
+    path = export_excel(asia_clifford_export, tower_asia_export)
+    st.download_button("Download Excel", open(path, "rb"), file_name="asia_hiring_report.xlsx")
+
+if st.button("📧 Send Email"):
+    send_email(path)
+    st.success("Email sent successfully!")
