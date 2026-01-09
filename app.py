@@ -5,7 +5,7 @@ from Clifford_chance import run_clifford
 from tower import run_tower
 import smtplib
 from email.message import EmailMessage
-
+from io import BytesIO
 # -------------------------------
 # Page config
 # -------------------------------
@@ -14,35 +14,49 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-def export_excel(clifford_tabs, tower_df):
-    os.makedirs("data", exist_ok=True)
-    path = "data/asia_hiring_report.xlsx"
+# def export_excel(clifford_tabs, tower_df):
+#     os.makedirs("data", exist_ok=True)
+#     path = "data/asia_hiring_report.xlsx"
 
-    with pd.ExcelWriter(path, engine="xlsxwriter") as writer:
+#     with pd.ExcelWriter(path, engine="xlsxwriter") as writer:
+#         clifford_tabs["Experienced_Lawyers"].to_excel(writer, sheet_name="Clifford_Lawyers", index=False)
+#         clifford_tabs["Business_Professionals"].to_excel(writer, sheet_name="Clifford_Business", index=False)
+#         clifford_tabs["Early_Careers"].to_excel(writer, sheet_name="Clifford_Early", index=False)
+#         tower_df.to_excel(writer, sheet_name="Tower", index=False)
+
+#     return path
+
+
+def build_excel_in_memory(clifford_tabs, tower_df):
+    buffer = BytesIO()
+
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
         clifford_tabs["Experienced_Lawyers"].to_excel(writer, sheet_name="Clifford_Lawyers", index=False)
         clifford_tabs["Business_Professionals"].to_excel(writer, sheet_name="Clifford_Business", index=False)
         clifford_tabs["Early_Careers"].to_excel(writer, sheet_name="Clifford_Early", index=False)
         tower_df.to_excel(writer, sheet_name="Tower", index=False)
 
-    return path
-def send_email(file_path):
+    buffer.seek(0)
+    return buffer
+
+def send_email_excel(buffer):
     msg = EmailMessage()
     msg["Subject"] = "Asia Hiring Radar – Daily Report"
     msg["From"] = "glane.gonsalves9@gmail.com"
     msg["To"] = "glane.gonsalves9@gmail.com"
     msg.set_content("Attached: Asia hiring jobs for Clifford Chance and Tower Research.")
 
-    with open(file_path, "rb") as f:
-        msg.add_attachment(
-            f.read(),
-            maintype="application",
-            subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            filename="asia_hiring_report.xlsx"
-        )
+    msg.add_attachment(
+        buffer.read(),
+        maintype="application",
+        subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename="asia_hiring_report.xlsx"
+    )
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login("YOUR_EMAIL@gmail.com", "YOUR_GMAIL_APP_PASSWORD")
+        smtp.login("glane.gonsalves9@gmail.com", "YOUR_GMAIL_APP_PASSWORD")
         smtp.send_message(msg)
+
 
 # -------------------------------
 # Session cache
@@ -191,19 +205,20 @@ else:
 
 st.divider()
 
-if st.button("📤 Export Asia Jobs to Excel"):
-    st.session_state.excel_path = export_excel(asia_clifford_export, tower_asia_export)
-    st.success("Excel file created")
-    st.download_button(
-        "Download Excel",
-        open(st.session_state.excel_path, "rb"),
-        file_name="asia_hiring_report.xlsx"
-    )
-
+# if st.button("📤 Export Asia Jobs to Excel"):
+#     st.session_state.excel_path = export_excel(asia_clifford_export, tower_asia_export)
+#     st.success("Excel file created")
+#     st.download_button(
+#         "Download Excel",
+#         open(st.session_state.excel_path, "rb"),
+#         file_name="asia_hiring_report.xlsx"
+#     )
 
 if st.button("📧 Send Email"):
-    if st.session_state.excel_path is None:
-        st.error("Please export the Excel file first.")
-    else:
-        send_email(st.session_state.excel_path)
+    try:
+        excel_buffer = build_excel_in_memory(asia_clifford_export, tower_asia_export)
+        send_email_excel(excel_buffer)
         st.success("Email sent successfully!")
+    except Exception as e:
+        st.error(f"Email failed: {e}")
+
