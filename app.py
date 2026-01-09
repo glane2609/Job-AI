@@ -29,7 +29,7 @@ def send_email(file_path):
     msg = EmailMessage()
     msg["Subject"] = "Asia Hiring Radar – Daily Report"
     msg["From"] = "glane.gonsalves9@gmail.com"
-    msg["To"] = "ronitsalvi@aquissearch.com"
+    msg["To"] = "glane.gonsalves9@gmail.com"
     msg.set_content("Attached: Asia hiring jobs for Clifford Chance and Tower Research.")
 
     with open(file_path, "rb") as f:
