@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+from datetime import datetime
 
 from Clifford_chance import run_clifford
 from tower import run_tower
@@ -24,36 +25,48 @@ if "clifford_live" not in st.session_state:
     st.session_state.clifford_live = None
 
 # -------------------------------
-# India cities
+# ASIA FILTER (Countries + Cities)
 # -------------------------------
-INDIA_CITIES = [
-    "Mumbai", "Bangalore", "Bengaluru", "Delhi", "New Delhi",
-    "Gurgaon", "Gurugram", "Noida", "Hyderabad",
-    "Chennai", "Pune", "Kolkata", "GIFT City", "Gift City"
+ASIA_LOCATIONS = [
+    # Countries
+    "India","Singapore","China","Japan","Korea","South Korea","Taiwan",
+    "Thailand","Malaysia","Indonesia","Vietnam","Philippines",
+    "UAE","Qatar","Saudi","Dubai","Abu Dhabi","Doha",
+
+    # Cities
+    "Mumbai","Bangalore","Bengaluru","Delhi","Gurgaon","Gurugram","Noida",
+    "Hyderabad","Chennai","Pune","Kolkata",
+    "Singapore","Hong Kong","Tokyo","Osaka","Seoul","Shanghai","Beijing",
+    "Taipei","Bangkok","Kuala Lumpur","Jakarta","Manila","Ho Chi Minh","GIFT City","Gift City"
 ]
-
-
 
 def apply_region_filter(df):
     if "location" not in df.columns:
         return df
 
-    india_regex = "|".join(INDIA_CITIES)
+    asia_regex = "|".join(ASIA_LOCATIONS)
 
-    if region_filter == "India":
-        return df[df["location"].str.contains(india_regex, case=False, na=False)]
+    if region_filter == "Asia":
+        return df[df["location"].str.contains(asia_regex, case=False, na=False)]
     elif region_filter == "Rest of World":
-        return df[~df["location"].str.contains(india_regex, case=False, na=False)]
+        return df[~df["location"].str.contains(asia_regex, case=False, na=False)]
     return df
 
+
 # -------------------------------
-# New job tracking
+# n-1 vs n comparison helpers
 # -------------------------------
 def get_new_jobs(df_live, seen_file, id_col):
     if not os.path.exists(seen_file):
         return df_live.copy()
     df_seen = pd.read_csv(seen_file)
     return df_live[~df_live[id_col].astype(str).isin(df_seen[id_col].astype(str))]
+
+def get_dropped_jobs(df_live, seen_file, id_col):
+    if not os.path.exists(seen_file):
+        return pd.DataFrame()
+    df_seen = pd.read_csv(seen_file)
+    return df_seen[~df_seen[id_col].astype(str).isin(df_live[id_col].astype(str))]
 
 def update_seen(df_live, seen_file, id_col):
     os.makedirs("data", exist_ok=True)
@@ -64,6 +77,7 @@ def update_seen(df_live, seen_file, id_col):
         combined = df_live[[id_col]]
     combined = combined.drop_duplicates()
     combined.to_csv(seen_file, index=False)
+
 
 # -------------------------------
 # Styling
@@ -104,7 +118,8 @@ if st.button("🚀 Run Live Scan"):
 # -------------------------------
 # Region filter
 # -------------------------------
-region_filter = st.selectbox("🌍 Filter jobs by region", ["All", "India", "Rest of World"])
+region_filter = st.selectbox("🌏 Filter by region", ["All", "Asia", "Rest of World"])
+
 
 # ===============================
 # TOWER
@@ -116,21 +131,20 @@ if source == "Tower Research":
         st.stop()
 
     df_live = st.session_state.tower_live.drop_duplicates(subset=["id"])
+
     df_new = get_new_jobs(df_live, "data/tower_seen.csv", "id")
-    new_count = len(df_new)
+    df_dropped = get_dropped_jobs(df_live, "data/tower_seen.csv", "id")
     update_seen(df_live, "data/tower_seen.csv", "id")
 
     df_live = apply_region_filter(df_live)
 
     st.markdown(f"**Total roles currently listed:** `{len(df_live)}`")
-
-    if new_count > 0:
-        st.success(f"🆕 {new_count} new Tower jobs found since last scan")
-    else:
-        st.info("No new Tower jobs since last scan")
+    st.success(f"🆕 New today: {len(df_new)}")
+    st.warning(f"🗑 Dropped since last scan: {len(df_dropped)}")
 
     df_live["url"] = df_live["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
     st.markdown(df_live.to_html(escape=False, index=False), unsafe_allow_html=True)
+
 
 # ===============================
 # CLIFFORD
@@ -157,17 +171,14 @@ else:
             df_live = pd.DataFrame(data[key]).drop_duplicates(subset=["job_id"])
 
             df_new = get_new_jobs(df_live, "data/clifford_seen.csv", "job_id")
-            new_count = len(df_new)
+            df_dropped = get_dropped_jobs(df_live, "data/clifford_seen.csv", "job_id")
             update_seen(df_live, "data/clifford_seen.csv", "job_id")
 
             df_live = apply_region_filter(df_live)
 
             st.markdown(f"**Total roles currently listed:** `{len(df_live)}`")
-
-            if new_count > 0:
-                st.success(f"🆕 {new_count} new jobs found since last scan")
-            else:
-                st.info("No new jobs found since last scan")
+            st.success(f"🆕 New today: {len(df_new)}")
+            st.warning(f"🗑 Dropped since last scan: {len(df_dropped)}")
 
             df_live["url"] = df_live["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
             st.markdown(df_live.to_html(escape=False, index=False), unsafe_allow_html=True)
