@@ -137,6 +137,22 @@ st.divider()
 # -------------------------------
 source = st.selectbox("Select Hiring Source", ["Clifford Chance", "Tower Research"])
 
+# -------------------------------
+# Init persistent exports
+# -------------------------------
+if "asia_clifford_export" not in st.session_state:
+    st.session_state.asia_clifford_export = {
+        "Experienced_Lawyers": pd.DataFrame(),
+        "Business_Professionals": pd.DataFrame(),
+        "Early_Careers": pd.DataFrame()
+    }
+
+if "tower_asia_export" not in st.session_state:
+    st.session_state.tower_asia_export = pd.DataFrame()
+
+# -------------------------------
+# Run Scan
+# -------------------------------
 if st.button("🚀 Run Live Scan"):
     if source == "Tower Research":
         with st.spinner("🔍 Scanning Tower Research..."):
@@ -156,7 +172,10 @@ if source == "Tower Research":
 
     df = st.session_state.tower_live.drop_duplicates(subset=["id"])
     df_asia = df[df["location"].apply(is_asia)]
-    tower_asia_export = df_asia.copy()
+
+    # Save Asia snapshot for email
+    st.session_state.tower_asia_export = df_asia.copy()
+
     today, new, removed = compare(df_asia, TOWER_SNAPSHOT, "id")
     save_snapshot(today, TOWER_SNAPSHOT)
 
@@ -184,12 +203,15 @@ else:
         "Business Professionals": "Business_Professionals",
         "Early Careers": "Early_Careers"
     }
-    asia_clifford_export = {}
+
     for i, (label, key) in enumerate(mapping.items()):
         with tabs[i]:
             df = pd.DataFrame(data[key]).drop_duplicates(subset=["job_id"])
             df_asia = df[df["location"].apply(is_asia)]
-            asia_clifford_export[key] = df_asia.copy()
+
+            # Save Asia data for email
+            st.session_state.asia_clifford_export[key] = df_asia.copy()
+
             today, new, removed = compare(df_asia, CLIFFORD_SNAPSHOT, "job_id")
             save_snapshot(today, CLIFFORD_SNAPSHOT)
 
@@ -200,25 +222,18 @@ else:
             today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
             st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-
-
-
+# -------------------------------
+# EMAIL BUTTON
+# -------------------------------
 st.divider()
-
-# if st.button("📤 Export Asia Jobs to Excel"):
-#     st.session_state.excel_path = export_excel(asia_clifford_export, tower_asia_export)
-#     st.success("Excel file created")
-#     st.download_button(
-#         "Download Excel",
-#         open(st.session_state.excel_path, "rb"),
-#         file_name="asia_hiring_report.xlsx"
-#     )
 
 if st.button("📧 Send Email"):
     try:
-        excel_buffer = build_excel_in_memory(asia_clifford_export, tower_asia_export)
+        excel_buffer = build_excel_in_memory(
+            st.session_state.asia_clifford_export,
+            st.session_state.tower_asia_export
+        )
         send_email_excel(excel_buffer)
         st.success("Email sent successfully!")
     except Exception as e:
         st.error(f"Email failed: {e}")
-
