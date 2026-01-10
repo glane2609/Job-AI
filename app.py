@@ -26,7 +26,22 @@ st.set_page_config(
 #         tower_df.to_excel(writer, sheet_name="Tower", index=False)
 
 #     return path
+def build_tower_excel(df):
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        df.to_excel(writer, sheet_name="Tower Asia Jobs", index=False)
+    buffer.seek(0)
+    return buffer
 
+
+def build_clifford_excel(tabs):
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        tabs["Experienced_Lawyers"].to_excel(writer, sheet_name="Experienced Lawyers", index=False)
+        tabs["Business_Professionals"].to_excel(writer, sheet_name="Business Professionals", index=False)
+        tabs["Early_Careers"].to_excel(writer, sheet_name="Early Careers", index=False)
+    buffer.seek(0)
+    return buffer
 
 def build_excel_in_memory(source, clifford_tabs=None, tower_df=None):
     buffer = io.BytesIO()
@@ -276,16 +291,55 @@ else:
 # -------------------------------
 st.divider()
 
-if st.button("📧 Send Email"):
-    try:
-        excel_buffer = build_excel_in_memory(
-            source,
-            clifford_tabs=st.session_state.asia_clifford_export,
-            tower_df=st.session_state.tower_asia_export
-        )
-        send_email_excel(excel_buffer, source)
-        st.success("Email sent successfully!")
-    except Exception as e:
-        st.error(f"Email failed: {e}")
+col1, col2 = st.columns(2)
+
+# ======================
+# CLIFFORD
+# ======================
+if source == "Clifford Chance":
+
+    with col1:
+        if st.button("📥 Download Excel"):
+            buffer = build_clifford_excel(st.session_state.asia_clifford_export)
+            st.download_button(
+                "Download Clifford Asia Jobs",
+                buffer,
+                file_name="clifford_asia_jobs.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+    with col2:
+        if st.button("📧 Send Email"):
+            try:
+                buffer = build_clifford_excel(st.session_state.asia_clifford_export)
+                send_email_excel(buffer)
+                st.success("Email sent successfully!")
+            except Exception as e:
+                st.error(f"Email failed: {e}")
+
+
+# ======================
+# TOWER
+# ======================
+if source == "Tower Research":
+
+    with col1:
+        if st.button("📥 Download Excel"):
+            buffer = build_tower_excel(st.session_state.tower_asia_export)
+            st.download_button(
+                "Download Tower Asia Jobs",
+                buffer,
+                file_name="tower_asia_jobs.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+    with col2:
+        if st.button("📧 Send Email"):
+            try:
+                buffer = build_tower_excel(st.session_state.tower_asia_export)
+                send_email_excel(buffer)
+                st.success("Email sent successfully!")
+            except Exception as e:
+                st.error(f"Email failed: {e}")
 
 
