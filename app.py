@@ -6,6 +6,7 @@ from tower import run_tower
 import smtplib
 from email.message import EmailMessage
 from io import BytesIO
+import io
 # -------------------------------
 # Page config
 # -------------------------------
