@@ -479,11 +479,14 @@ if source == "Tower Research":
 
     today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
     #st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
-    st.markdown(f"""
-    <div class="table-center">
-        {today.to_html(escape=False, index=False)}
-    </div>
-    """, unsafe_allow_html=True)
+    left, center, right = st.columns([1, 3, 1])
+
+    with center:
+        st.markdown(f"""
+        <div class="table-center">
+            {today.to_html(escape=False, index=False)}
+        </div>
+        """, unsafe_allow_html=True)
 # ===============================
 # CLIFFORD
 # ===============================
@@ -539,7 +542,10 @@ else:
 
             today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
             #st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
-            st.markdown(f"""
+            left, center, right = st.columns([1, 3, 1])
+
+            with center:
+                st.markdown(f"""
                 <div class="table-center">
                     {today.to_html(escape=False, index=False)}
                 </div>
