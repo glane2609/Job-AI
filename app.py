@@ -452,41 +452,42 @@ if source == "Tower Research":
     today, new, removed = compare(df_asia, TOWER_SNAPSHOT, "id")
     save_snapshot(today, TOWER_SNAPSHOT)
 
-    # st.markdown(f"**Asia jobs visible today:** `{len(today)}`")
-    # st.success(f"🆕 New since last scan: `{len(new)}`")
-    # st.warning(f"🗑 Removed since last scan: `{len(removed)}`")
-    st.markdown(f"""
+    today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
+
+    # ===== CENTERED KPI + TABLE LAYOUT =====
+    left, center, right = st.columns([1, 3, 1])
+    
+    with center:
+    
+        # KPI CARDS
+        st.markdown(f"""
         <div class="kpi-row">
-        
+    
           <div class="kpi-card">
             🌏 Asia Jobs
             <div class="kpi-number">{len(today)}</div>
           </div>
-        
+    
           <div class="kpi-card kpi-green">
             🆕 New
             <div class="kpi-number">{len(new)}</div>
           </div>
-        
+    
           <div class="kpi-card kpi-red">
             🗑 Removed
             <div class="kpi-number">{len(removed)}</div>
           </div>
-        
+    
         </div>
         """, unsafe_allow_html=True)
-
-
-    today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
-    #st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
-    left, center, right = st.columns([1, 3, 1])
-
-    with center:
+    
+        # TABLE DIRECTLY UNDER KPIs
         st.markdown(f"""
         <div class="table-center">
             {today.to_html(escape=False, index=False)}
         </div>
         """, unsafe_allow_html=True)
+
 # ===============================
 # CLIFFORD
 # ===============================
@@ -516,40 +517,42 @@ else:
             today, new, removed = compare(df_asia, CLIFFORD_SNAPSHOT, "job_id")
             save_snapshot(today, CLIFFORD_SNAPSHOT)
 
-            # st.markdown(f"**Asia jobs visible today:** `{len(today)}`")
-            # st.success(f"🆕 New since last scan: `{len(new)}`")
-            # st.warning(f"🗑 Removed since last scan: `{len(removed)}`")
-            st.markdown(f"""
-            <div class="kpi-row">
-            
-              <div class="kpi-card kpi-center">
-                🌏 Asia Jobs
-                <div class="kpi-number">{len(today)}</div>
-              </div>
-            
-              <div class="kpi-card kpi-center kpi-green">
-                🆕 New
-                <div class="kpi-number">{len(new)}</div>
-              </div>
-            
-              <div class="kpi-card kpi-center kpi-red">
-                🗑 Removed
-                <div class="kpi-number">{len(removed)}</div>
-              </div>
-            
-            </div>
-            """, unsafe_allow_html=True)
-
             today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
-            #st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
-            left, center, right = st.columns([1, 3, 1])
 
+            # ===== CENTERED KPI + TABLE LAYOUT =====
+            left, center, right = st.columns([1, 3, 1])
+            
             with center:
+            
+                # KPI CARDS
+                st.markdown(f"""
+                <div class="kpi-row">
+            
+                  <div class="kpi-card">
+                    🌏 Asia Jobs
+                    <div class="kpi-number">{len(today)}</div>
+                  </div>
+            
+                  <div class="kpi-card kpi-green">
+                    🆕 New
+                    <div class="kpi-number">{len(new)}</div>
+                  </div>
+            
+                  <div class="kpi-card kpi-red">
+                    🗑 Removed
+                    <div class="kpi-number">{len(removed)}</div>
+                  </div>
+            
+                </div>
+                """, unsafe_allow_html=True)
+            
+                # TABLE DIRECTLY UNDER KPIs
                 st.markdown(f"""
                 <div class="table-center">
                     {today.to_html(escape=False, index=False)}
                 </div>
                 """, unsafe_allow_html=True)
+
 # -------------------------------
 # EMAIL BUTTON
 # -------------------------------
