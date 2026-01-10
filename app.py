@@ -27,14 +27,18 @@ st.set_page_config(
 #     return path
 
 
-def build_excel_in_memory(clifford_tabs, tower_df):
-    buffer = BytesIO()
+def build_excel_in_memory(source, clifford_tabs=None, tower_df=None):
+    buffer = io.BytesIO()
 
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        clifford_tabs["Experienced_Lawyers"].to_excel(writer, sheet_name="Clifford_Lawyers", index=False)
-        clifford_tabs["Business_Professionals"].to_excel(writer, sheet_name="Clifford_Business", index=False)
-        clifford_tabs["Early_Careers"].to_excel(writer, sheet_name="Clifford_Early", index=False)
-        tower_df.to_excel(writer, sheet_name="Tower", index=False)
+
+        if source == "Clifford Chance" and clifford_tabs is not None:
+            clifford_tabs["Experienced_Lawyers"].to_excel(writer, sheet_name="Clifford_Lawyers", index=False)
+            clifford_tabs["Business_Professionals"].to_excel(writer, sheet_name="Clifford_Business", index=False)
+            clifford_tabs["Early_Careers"].to_excel(writer, sheet_name="Clifford_Early", index=False)
+
+        elif source == "Tower Research" and tower_df is not None:
+            tower_df.to_excel(writer, sheet_name="Tower", index=False)
 
     buffer.seek(0)
     return buffer
