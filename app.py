@@ -65,65 +65,50 @@ def build_excel_for_download(source, clifford_tabs=None, tower_df=None):
 
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
 
-        # Clifford → 3 sheets
         if source == "Clifford Chance":
-            clifford_tabs["Experienced_Lawyers"].to_excel(
-                writer, sheet_name="Experienced Lawyers", index=False
-            )
-            clifford_tabs["Business_Professionals"].to_excel(
-                writer, sheet_name="Business Professionals", index=False
-            )
-            clifford_tabs["Early_Careers"].to_excel(
-                writer, sheet_name="Early Careers", index=False
-            )
+            clifford_tabs["Experienced_Lawyers"].to_excel(writer, sheet_name="Experienced Lawyers", index=False)
+            clifford_tabs["Business_Professionals"].to_excel(writer, sheet_name="Business Professionals", index=False)
+            clifford_tabs["Early_Careers"].to_excel(writer, sheet_name="Early Careers", index=False)
 
-        # Tower → 1 sheet
         elif source == "Tower Research":
             tower_df.to_excel(writer, sheet_name="Tower Asia Jobs", index=False)
 
     buffer.seek(0)
-    return buffer
+    return buffer 
 import os
 import base64
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import (
-    Mail,
-    Attachment,
-    FileContent,
-    FileName,
-    FileType,
-    Disposition
-)
+from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 
-# ----------------------------
-# SENDGRID EMAIL
-# ----------------------------
-def send_email_excel(buffer, source):
+def send_email_excel(source, buffer):
 
     api_key = os.getenv("SENDGRID_API_KEY")
     if not api_key:
         raise Exception("SENDGRID_API_KEY not set")
 
-    sender = "glane.gonsalves9@gmail.com"     # must be verified sender
-    recipient = "glane.gonsalves9@gmail.com" # change to HR / company later
+    sender = "glane.gonsalves9@gmail.com"      # must be SendGrid-verified
+    recipient = "glane.gonsalves9@gmail.com"  # change later to HR / company
 
     subject = f"Asia Hiring Radar – {source}"
+
     body = f"""
 Hello,
 
-Attached is the latest Asia hiring report from {source}.
+Attached is the latest Asia hiring report for **{source}**.
 
 Regards  
 Job-AI
 """
 
-    # Convert Excel to base64
+    # Make sure buffer is at start
     buffer.seek(0)
-    encoded = base64.b64encode(buffer.read()).decode()
+
+    # Convert Excel to base64
+    encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
     attachment = Attachment(
         FileContent(encoded),
-        FileName("asia_hiring_report.xlsx"),
+        FileName(f"{source.lower().replace(' ','_')}_asia_jobs.xlsx"),
         FileType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         Disposition("attachment")
     )
@@ -140,8 +125,9 @@ Job-AI
     sg = SendGridAPIClient(api_key)
     response = sg.send(message)
 
-    if response.status_code not in [200, 202]:
-        raise Exception(f"SendGrid failed: {response.status_code}")
+    if response.status_code not in (200, 202):
+        raise Exception(f"SendGrid failed: {response.status_code} – {response.body}")
+
 
 
 
@@ -340,7 +326,7 @@ if source == "Clifford Chance":
             )
 
         with col2:
-            if st.button("📧 Send Clifford Email", use_container_width=True):
+            if st.button("📧 Send Clifford Email", use_container_width=False):
                 try:
                     send_email_excel("Clifford Chance", buffer)
                     st.success("Clifford email sent successfully!")
@@ -367,7 +353,7 @@ if source == "Tower Research" and not st.session_state.tower_asia_export.empty:
         )
 
     with col2:
-        if st.button("📧 Send Tower Email", use_container_width=True):
+        if st.button("📧 Send Tower Email", use_container_width=False):
             try:
                 send_email_excel("Tower Research", buffer)
                 st.success("Tower email sent successfully!")
