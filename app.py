@@ -39,28 +39,65 @@ def build_excel_in_memory(clifford_tabs, tower_df):
     buffer.seek(0)
     return buffer
 
-def send_email_excel(buffer):
-    password = os.getenv("GMAIL_APP_PASSWORD")
-    if not password:
-        raise Exception("GMAIL_APP_PASSWORD not found")
+import os
+import base64
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import (
+    Mail,
+    Attachment,
+    FileContent,
+    FileName,
+    FileType,
+    Disposition
+)
 
-    msg = EmailMessage()
-    msg["Subject"] = "Asia Hiring Radar – Daily Report"
-    msg["From"] = "glane.gonsalves9@gmail.com"
-    msg["To"] = "glane.gonsalves9@gmail.com"
-    msg.set_content("Attached: Asia hiring jobs for Clifford Chance and Tower Research.")
+# ----------------------------
+# SENDGRID EMAIL
+# ----------------------------
+def send_email_excel(buffer, source):
 
-    msg.add_attachment(
-        buffer.read(),
-        maintype="application",
-        subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        filename="asia_hiring_report.xlsx"
+    api_key = os.getenv("SENDGRID_API_KEY")
+    if not api_key:
+        raise Exception("SENDGRID_API_KEY not set")
+
+    sender = "glane.gonsalves9@gmail.com"     # must be verified sender
+    recipient = "glane.gonsalves9@gmail.com" # change to HR / company later
+
+    subject = f"Asia Hiring Radar – {source}"
+    body = f"""
+Hello,
+
+Attached is the latest Asia hiring report from {source}.
+
+Regards  
+Job-AI
+"""
+
+    # Convert Excel to base64
+    buffer.seek(0)
+    encoded = base64.b64encode(buffer.read()).decode()
+
+    attachment = Attachment(
+        FileContent(encoded),
+        FileName("asia_hiring_report.xlsx"),
+        FileType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        Disposition("attachment")
     )
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.set_debuglevel(1)   # <-- THIS
-        smtp.login("glane.gonsalves9@gmail.com", password)
-        smtp.send_message(msg)
+    message = Mail(
+        from_email=sender,
+        to_emails=recipient,
+        subject=subject,
+        plain_text_content=body
+    )
+
+    message.attachment = attachment
+
+    sg = SendGridAPIClient(api_key)
+    response = sg.send(message)
+
+    if response.status_code not in [200, 202]:
+        raise Exception(f"SendGrid failed: {response.status_code}")
 
 
 
@@ -237,10 +274,12 @@ st.divider()
 if st.button("📧 Send Email"):
     try:
         excel_buffer = build_excel_in_memory(
-            st.session_state.asia_clifford_export,
-            st.session_state.tower_asia_export
+            source,
+            clifford_tabs=st.session_state.asia_clifford_export if source == "Clifford Chance" else None,
+            tower_df=st.session_state.tower_asia_export if source == "Tower Research" else None
         )
-        send_email_excel(excel_buffer)
+        send_email_excel(excel_buffer, source)
         st.success("Email sent successfully!")
     except Exception as e:
         st.error(f"Email failed: {e}")
+
