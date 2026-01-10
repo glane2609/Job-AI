@@ -58,7 +58,31 @@ def build_excel_in_memory(source, clifford_tabs=None, tower_df=None):
 
     buffer.seek(0)
     return buffer
+from io import BytesIO
 
+def build_excel_for_download(source, clifford_tabs=None, tower_df=None):
+    buffer = BytesIO()
+
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+
+        # Clifford → 3 sheets
+        if source == "Clifford Chance":
+            clifford_tabs["Experienced_Lawyers"].to_excel(
+                writer, sheet_name="Experienced Lawyers", index=False
+            )
+            clifford_tabs["Business_Professionals"].to_excel(
+                writer, sheet_name="Business Professionals", index=False
+            )
+            clifford_tabs["Early_Careers"].to_excel(
+                writer, sheet_name="Early Careers", index=False
+            )
+
+        # Tower → 1 sheet
+        elif source == "Tower Research":
+            tower_df.to_excel(writer, sheet_name="Tower Asia Jobs", index=False)
+
+    buffer.seek(0)
+    return buffer
 import os
 import base64
 from sendgrid import SendGridAPIClient
