@@ -391,7 +391,15 @@ button[data-baseweb="tab"][aria-selected="true"] {
     from { opacity: 0; transform: scale(0.6); }
     to { opacity: 1; transform: scale(1); }
 }
+.table-left {
+    max-width: 1100px;
+    margin: 30px 0;
+}
 
+.table-left table {
+    width: 100%;
+    border-collapse: collapse;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -455,38 +463,35 @@ if source == "Tower Research":
     today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
 
     # ===== CENTERED KPI + TABLE LAYOUT =====
-    left, center, right = st.columns([1, 3, 1])
+    # KPI CARDS (keep centered)
+    st.markdown(f"""
+    <div class="kpi-row">
     
-    with center:
+      <div class="kpi-card">
+        🌏 Asia Jobs
+        <div class="kpi-number">{len(today)}</div>
+      </div>
     
-        # KPI CARDS
-        st.markdown(f"""
-        <div class="kpi-row">
+      <div class="kpi-card kpi-green">
+        🆕 New
+        <div class="kpi-number">{len(new)}</div>
+      </div>
     
-          <div class="kpi-card">
-            🌏 Asia Jobs
-            <div class="kpi-number">{len(today)}</div>
-          </div>
+      <div class="kpi-card kpi-red">
+        🗑 Removed
+        <div class="kpi-number">{len(removed)}</div>
+      </div>
     
-          <div class="kpi-card kpi-green">
-            🆕 New
-            <div class="kpi-number">{len(new)}</div>
-          </div>
+    </div>
+    """, unsafe_allow_html=True)
     
-          <div class="kpi-card kpi-red">
-            🗑 Removed
-            <div class="kpi-number">{len(removed)}</div>
-          </div>
-    
-        </div>
-        """, unsafe_allow_html=True)
-    
-        # TABLE DIRECTLY UNDER KPIs
-        st.markdown(f"""
-        <div class="table-center">
-            {today.to_html(escape=False, index=False)}
-        </div>
-        """, unsafe_allow_html=True)
+    # TABLE (left aligned)
+    st.markdown(f"""
+    <div class="table-left">
+        {today.to_html(escape=False, index=False)}
+    </div>
+    """, unsafe_allow_html=True)
+
 
 # ===============================
 # CLIFFORD
@@ -519,46 +524,41 @@ else:
 
             today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
 
-            # ===== CENTERED KPI + TABLE LAYOUT =====
-            left, center, right = st.columns([1, 3, 1])
+            # KPI CARDS
+            st.markdown(f"""
+            <div class="kpi-row">
             
-            with center:
+              <div class="kpi-card">
+                🌏 Asia Jobs
+                <div class="kpi-number">{len(today)}</div>
+              </div>
             
-                # KPI CARDS
-                st.markdown(f"""
-                <div class="kpi-row">
+              <div class="kpi-card kpi-green">
+                🆕 New
+                <div class="kpi-number">{len(new)}</div>
+              </div>
             
-                  <div class="kpi-card">
-                    🌏 Asia Jobs
-                    <div class="kpi-number">{len(today)}</div>
-                  </div>
+              <div class="kpi-card kpi-red">
+                🗑 Removed
+                <div class="kpi-number">{len(removed)}</div>
+              </div>
             
-                  <div class="kpi-card kpi-green">
-                    🆕 New
-                    <div class="kpi-number">{len(new)}</div>
-                  </div>
+            </div>
+            """, unsafe_allow_html=True)
             
-                  <div class="kpi-card kpi-red">
-                    🗑 Removed
-                    <div class="kpi-number">{len(removed)}</div>
-                  </div>
+            # TABLE
+            st.markdown(f"""
+            <div class="table-left">
+                {today.to_html(escape=False, index=False)}
+            </div>
+            """, unsafe_allow_html=True)
             
-                </div>
-                """, unsafe_allow_html=True)
-            
-                # TABLE DIRECTLY UNDER KPIs
-                st.markdown(f"""
-                <div class="table-center">
-                    {today.to_html(escape=False, index=False)}
-                </div>
-                """, unsafe_allow_html=True)
-
 # -------------------------------
 # EMAIL BUTTON
 # -------------------------------
 st.divider()
 
-left, col1, col2, right = st.columns([1, 2, 2, 1])
+col1, col2 = st.columns(2)
 
 # ======================
 # CLIFFORD
