@@ -191,10 +191,32 @@ st.markdown("""
 
 /* ===== Animated Gradient Background ===== */
 .stApp {
-    background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #0b132b);
-    background-size: 400% 400%;
-    animation: gradientBG 15s ease infinite;
+    background:
+        linear-gradient(180deg, #0b1f2a 0%, #122f3f 40%, #102733 100%),
+        radial-gradient(circle at 20% 20%, rgba(0,140,255,0.12), transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(0,255,200,0.08), transparent 40%);
+    background-blend-mode: screen;
     color: white;
+}
+.stApp::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+        linear-gradient(120deg,
+            transparent 30%,
+            rgba(0,180,255,0.06) 45%,
+            rgba(255,255,255,0.08) 50%,
+            rgba(0,180,255,0.06) 55%,
+            transparent 70%);
+    animation: lightSweep 12s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes lightSweep {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
 }
 
 @keyframes gradientBG {
@@ -233,6 +255,22 @@ h1, h2, h3, h4 {
     box-shadow: 0 0 40px rgba(0,198,255,0.9);
 }
 
+.stDownloadButton>button {
+    background: linear-gradient(135deg, #00c6ff, #0072ff) !important;
+    color: white !important;
+    border-radius: 30px !important;
+    padding: 12px 28px !important;
+    border: none !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px !important;
+    box-shadow: 0 0 25px rgba(0,198,255,0.7) !important;
+    transition: all 0.3s ease-in-out !important;
+}
+
+.stDownloadButton>button:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 45px rgba(0,198,255,1);
+}
 /* ===== DataFrame Glass Effect ===== */
 [data-testid="stDataFrame"], table {
     background: rgba(255,255,255,0.05) !important;
@@ -267,11 +305,57 @@ button[data-baseweb="tab"][aria-selected="true"] {
     visibility: hidden;
 }
 
+/* ===== Title Animations ===== */
+.title-left {
+    font-size: 48px;
+    font-weight: 800;
+    color: white;
+    animation: slideFromLeft 1s ease-out;
+}
+
+.title-right {
+    font-size: 48px;
+    font-weight: 800;
+    color: white;
+    animation: slideFromRight 1s ease-out;
+}
+
+.title-sub {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 18px;
+    color: #ccecff;
+    animation: fadeUp 1.2s ease-out;
+}
+
+/* Animations */
+@keyframes slideFromLeft {
+    from { opacity: 0; transform: translateX(-200px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideFromRight {
+    from { opacity: 0; transform: translateX(200px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align:center;'>📊 Live Hiring Intelligence</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align:center;'>Clifford Chance & Tower Research</h4>", unsafe_allow_html=True)
+st.markdown("""
+<div style="display:flex; justify-content:center; align-items:center; gap:20px; margin-top:20px;">
+    <div class="title-left">📊 Live Hiring</div>
+    <div class="title-right">Intelligence</div>
+</div>
+<div class="title-sub">Clifford Chance & Tower Research</div>
+""", unsafe_allow_html=True)
+
 st.divider()
 
 # -------------------------------
