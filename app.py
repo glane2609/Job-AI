@@ -188,17 +188,85 @@ def compare(today, snapshot_path, id_col):
 # -------------------------------
 st.markdown("""
 <style>
+
+/* ===== Animated Gradient Background ===== */
 .stApp {
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #0b132b);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
     color: white;
 }
-h1, h2, h3 { color: white; }
-.stButton>button {
-    background-color: #00c6ff;
-    color: black;
-    font-weight: bold;
-    border-radius: 8px;
+
+@keyframes gradientBG {
+    0% {background-position: 0% 50%;}
+    50% {background-position: 100% 50%;}
+    100% {background-position: 0% 50%;}
 }
+
+/* ===== Global Typography ===== */
+h1, h2, h3, h4 {
+    color: white;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* ===== Glassmorphism Cards ===== */
+.block-container {
+    backdrop-filter: blur(10px);
+}
+
+/* ===== Premium Buttons ===== */
+.stButton>button {
+    background: linear-gradient(135deg, #00c6ff, #0072ff);
+    color: white;
+    border-radius: 30px;
+    padding: 12px 28px;
+    border: none;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    box-shadow: 0 0 20px rgba(0,198,255,0.6);
+    transition: all 0.3s ease-in-out;
+}
+
+.stButton>button:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 40px rgba(0,198,255,0.9);
+}
+
+/* ===== DataFrame Glass Effect ===== */
+[data-testid="stDataFrame"], table {
+    background: rgba(255,255,255,0.05) !important;
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+/* ===== Smooth Animations ===== */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.stMarkdown, .stDataFrame, .stButton {
+    animation: slideUp 0.7s ease-in-out;
+}
+
+/* ===== Tab Glow ===== */
+button[data-baseweb="tab"] {
+    color: white !important;
+    font-weight: 600;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    border-bottom: 3px solid #00c6ff !important;
+    color: #00c6ff !important;
+}
+
+/* ===== Remove Streamlit Branding ===== */
+#MainMenu, footer, header {
+    visibility: hidden;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -253,13 +321,37 @@ if source == "Tower Research":
     today, new, removed = compare(df_asia, TOWER_SNAPSHOT, "id")
     save_snapshot(today, TOWER_SNAPSHOT)
 
-    st.markdown(f"**Asia jobs visible today:** `{len(today)}`")
-    st.success(f"🆕 New since last scan: `{len(new)}`")
-    st.warning(f"🗑 Removed since last scan: `{len(removed)}`")
+    # st.markdown(f"**Asia jobs visible today:** `{len(today)}`")
+    # st.success(f"🆕 New since last scan: `{len(new)}`")
+    # st.warning(f"🗑 Removed since last scan: `{len(removed)}`")
+    st.markdown(f"""
+    <div style="display:flex; gap:30px; justify-content:center;">
+    
+    <div class="left-in" style="background:#112; padding:20px 30px; border-radius:12px;">
+    <h3>🌏 Asia Jobs</h3>
+    <h1>{len(today)}</h1>
+    </div>
+    
+    <div class="center-in" style="background:#020; padding:20px 30px; border-radius:12px;">
+    <h3>🆕 New</h3>
+    <h1>{len(new)}</h1>
+    </div>
+    
+    <div class="right-in" style="background:#211; padding:20px 30px; border-radius:12px;">
+    <h3>🗑 Removed</h3>
+    <h1>{len(removed)}</h1>
+    </div>
+    
+    </div>
+    """, unsafe_allow_html=True)
 
     today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
-    st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
-
+    #st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="center-in">
+    {today.to_html(escape=False, index=False)}
+    </div>
+    """, unsafe_allow_html=True)
 # ===============================
 # CLIFFORD
 # ===============================
@@ -294,8 +386,12 @@ else:
             st.warning(f"🗑 Removed since last scan: `{len(removed)}`")
 
             today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
-            st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
-
+            #st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="center-in">
+            {today.to_html(escape=False, index=False)}
+            </div>
+            """, unsafe_allow_html=True)
 # -------------------------------
 # EMAIL BUTTON
 # -------------------------------
