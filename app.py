@@ -279,11 +279,12 @@ if st.button("📧 Send Email"):
     try:
         excel_buffer = build_excel_in_memory(
             source,
-            clifford_tabs=st.session_state.asia_clifford_export if source == "Clifford Chance" else None,
-            tower_df=st.session_state.tower_asia_export if source == "Tower Research" else None
+            clifford_tabs=st.session_state.asia_clifford_export,
+            tower_df=st.session_state.tower_asia_export
         )
         send_email_excel(excel_buffer, source)
         st.success("Email sent successfully!")
     except Exception as e:
         st.error(f"Email failed: {e}")
+
 
