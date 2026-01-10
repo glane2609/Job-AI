@@ -555,7 +555,7 @@ else:
 # -------------------------------
 st.divider()
 
-col1, col2 = st.columns([1, 1])
+left, col1, col2, right = st.columns([1, 2, 2, 1])
 
 # ======================
 # CLIFFORD
