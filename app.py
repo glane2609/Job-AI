@@ -192,10 +192,9 @@ st.markdown("""
 /* ===== Animated Gradient Background ===== */
 .stApp {
     background:
-        linear-gradient(180deg, #0b1f2a 0%, #122f3f 40%, #102733 100%),
-        radial-gradient(circle at 20% 20%, rgba(0,140,255,0.12), transparent 40%),
-        radial-gradient(circle at 80% 80%, rgba(0,255,200,0.08), transparent 40%);
-    background-blend-mode: screen;
+        radial-gradient(circle at top left, #0f4c75 0%, transparent 40%),
+        radial-gradient(circle at bottom right, #0a2540 0%, transparent 45%),
+        linear-gradient(180deg, #050b14 0%, #0b1f2a 40%, #0a2540 100%);
     color: white;
 }
 .stApp::before {
@@ -204,14 +203,19 @@ st.markdown("""
     inset: 0;
     background:
         linear-gradient(120deg,
-            transparent 30%,
-            rgba(0,180,255,0.06) 45%,
-            rgba(255,255,255,0.08) 50%,
-            rgba(0,180,255,0.06) 55%,
-            transparent 70%);
-    animation: lightSweep 12s linear infinite;
+            transparent 20%,
+            rgba(0,200,255,0.05) 40%,
+            rgba(255,255,255,0.07) 50%,
+            rgba(0,200,255,0.05) 60%,
+            transparent 80%);
+    animation: aurora 14s linear infinite;
     pointer-events: none;
     z-index: 0;
+}
+
+@keyframes aurora {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
 }
 
 @keyframes lightSweep {
@@ -344,6 +348,49 @@ button[data-baseweb="tab"][aria-selected="true"] {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* ===== KPI Cards ===== */
+.kpi-row {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin: 30px 0;
+}
+
+.kpi-card {
+    width: 220px;
+    height: 140px;
+    background: linear-gradient(135deg, #0b1f2a, #132f42);
+    border-radius: 20px;
+    text-align: center;
+    padding-top: 25px;
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    box-shadow: 0 0 40px rgba(0,180,255,0.25);
+    animation: popCenter 0.8s ease-out;
+}
+
+.kpi-number {
+    font-size: 48px;
+    font-weight: 800;
+    margin-top: 10px;
+}
+
+.kpi-green {
+    background: linear-gradient(135deg, #003b19, #0a4f2b);
+    box-shadow: 0 0 40px rgba(0,255,140,0.4);
+}
+
+.kpi-red {
+    background: linear-gradient(135deg, #3a0a0a, #5a1414);
+    box-shadow: 0 0 40px rgba(255,80,80,0.4);
+}
+
+/* ===== Center pop animation ===== */
+@keyframes popCenter {
+    from { opacity: 0; transform: scale(0.6); }
+    to { opacity: 1; transform: scale(1); }
+}
 
 </style>
 """, unsafe_allow_html=True)
@@ -465,9 +512,29 @@ else:
             today, new, removed = compare(df_asia, CLIFFORD_SNAPSHOT, "job_id")
             save_snapshot(today, CLIFFORD_SNAPSHOT)
 
-            st.markdown(f"**Asia jobs visible today:** `{len(today)}`")
-            st.success(f"🆕 New since last scan: `{len(new)}`")
-            st.warning(f"🗑 Removed since last scan: `{len(removed)}`")
+            # st.markdown(f"**Asia jobs visible today:** `{len(today)}`")
+            # st.success(f"🆕 New since last scan: `{len(new)}`")
+            # st.warning(f"🗑 Removed since last scan: `{len(removed)}`")
+            st.markdown(f"""
+            <div class="kpi-row">
+            
+              <div class="kpi-card kpi-center">
+                🌏 Asia Jobs
+                <div class="kpi-number">{len(today)}</div>
+              </div>
+            
+              <div class="kpi-card kpi-center kpi-green">
+                🆕 New
+                <div class="kpi-number">{len(new)}</div>
+              </div>
+            
+              <div class="kpi-card kpi-center kpi-red">
+                🗑 Removed
+                <div class="kpi-number">{len(removed)}</div>
+              </div>
+            
+            </div>
+            """, unsafe_allow_html=True)
 
             today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
             #st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
