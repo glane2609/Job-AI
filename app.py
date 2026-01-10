@@ -322,7 +322,7 @@ if source == "Clifford Chance":
                 data=buffer,
                 file_name="clifford_asia_jobs.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
+                use_container_width=False
             )
 
         with col2:
@@ -349,7 +349,7 @@ if source == "Tower Research" and not st.session_state.tower_asia_export.empty:
             data=buffer,
             file_name="tower_asia_jobs.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
+            use_container_width=False
         )
 
     with col2:
