@@ -456,25 +456,26 @@ if source == "Tower Research":
     # st.success(f"🆕 New since last scan: `{len(new)}`")
     # st.warning(f"🗑 Removed since last scan: `{len(removed)}`")
     st.markdown(f"""
-    <div style="display:flex; gap:30px; justify-content:center;">
-    
-    <div class="left-in" style="background:#112; padding:20px 30px; border-radius:12px;">
-    <h3>🌏 Asia Jobs</h3>
-    <h1>{len(today)}</h1>
-    </div>
-    
-    <div class="center-in" style="background:#020; padding:20px 30px; border-radius:12px;">
-    <h3>🆕 New</h3>
-    <h1>{len(new)}</h1>
-    </div>
-    
-    <div class="right-in" style="background:#211; padding:20px 30px; border-radius:12px;">
-    <h3>🗑 Removed</h3>
-    <h1>{len(removed)}</h1>
-    </div>
-    
-    </div>
-    """, unsafe_allow_html=True)
+        <div class="kpi-row">
+        
+          <div class="kpi-card">
+            🌏 Asia Jobs
+            <div class="kpi-number">{len(today)}</div>
+          </div>
+        
+          <div class="kpi-card kpi-green">
+            🆕 New
+            <div class="kpi-number">{len(new)}</div>
+          </div>
+        
+          <div class="kpi-card kpi-red">
+            🗑 Removed
+            <div class="kpi-number">{len(removed)}</div>
+          </div>
+        
+        </div>
+        """, unsafe_allow_html=True)
+
 
     today["url"] = today["url"].apply(lambda x: f'<a href="{x}" target="_blank">Open</a>')
     #st.markdown(today.to_html(escape=False, index=False), unsafe_allow_html=True)
